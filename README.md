@@ -4,6 +4,9 @@ Advanced RAG Agent using LangGraph
 uv run python src/app.py
 uv run python -m advanced_rag_agent.app.py
 
+to index 
+uv run python -m advanced_rag_agent.index_documents
+
 # To Run streamlit
 uv run streamlit run src/advanced_rag_agent/app_streamlit.py
 streamlit run src/advanced_rag_agent/app_streamlit.py
