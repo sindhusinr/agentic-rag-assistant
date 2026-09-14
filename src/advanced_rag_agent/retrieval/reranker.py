@@ -1,62 +1,43 @@
-# retrieval/reranker.py
+from sentence_transformers import CrossEncoder
 
-from advanced_rag_agent.generation.llm import (
-    get_llm,
-)
+from advanced_rag_agent.config.settings import RERANK_MODEL
 
+_reranker = None
 
-def rerank_documents(
-    query,
-    documents,
-    top_k=5,
-):
+def get_reranker():
+    global _reranker
 
-    llm = get_llm()
+    if not RERANK_MODEL:
+        raise ValueError("RERANK_MODEL is not configured.")
 
-    scored_docs = []
+    # Load the reranker only when it is actually needed
+    if _reranker is None:
+        _reranker = CrossEncoder(RERANK_MODEL)
 
-    for doc in documents:
+    return _reranker
 
-        prompt = f"""
-Score the relevance of this chunk
-to the question.
+def rerank_documents(query, documents, top_k=5):
+    if not documents:
+        return []
 
-Question:
-{query}
+    reranker = get_reranker()
 
-Chunk:
-{doc.page_content}
+    # Cross-encoder scores each query-document pair directly
+    pairs = [
+        (query, doc.page_content)
+        for doc in documents
+    ]
 
-Return only a number from 0 to 10.
-"""
+    scores = reranker.predict(pairs)
 
-        try:
-
-            score = llm.invoke(
-                prompt
-            ).content.strip()
-
-            score = float(score)
-
-        except Exception:
-
-            score = 0
-
-        scored_docs.append(
-            (
-                doc,
-                score,
-            )
-        )
-
+    # Higher cross-encoder score means more relevant
     ranked = sorted(
-        scored_docs,
+        zip(documents, scores),
         key=lambda x: x[1],
         reverse=True,
     )
 
     return [
         doc
-        for doc, _
-        in ranked[:top_k]
+        for doc, _ in ranked[:top_k]
     ]

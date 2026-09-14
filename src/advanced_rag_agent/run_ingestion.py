@@ -1,4 +1,4 @@
-from advanced_rag_agent.ingestion.ingest import ingest_documents
+from advanced_rag_agent.ingestion.ingestion_pipeline import ingest_documents
 
 def main():
     # Run incremental ingestion for all PDFs in the data folder

@@ -1,4 +1,7 @@
-def build_context(documents):
+from langchain_core.documents import Document
+
+
+def build_context(documents: list[Document]) -> str:
     context_parts = []
 
     for doc in documents:
@@ -9,7 +12,7 @@ def build_context(documents):
         page_start = metadata.get("page_start", 0)
         page_end = metadata.get("page_end", page_start)
 
-        # PDF metadata is zero-based; citations should be human-readable
+        # PDF page metadata is zero-based; show human-readable page numbers
         page_start += 1
         page_end += 1
 
@@ -18,7 +21,7 @@ def build_context(documents):
         else:
             page_info = f"Pages: {page_start}-{page_end}"
 
-        # Keep source metadata together with each retrieved chunk
+        # Keep citation metadata attached to each retrieved chunk
         context_parts.append(
             f"[Source: {source} | Section: {section} | {page_info}]\n"
             f"{doc.page_content}"

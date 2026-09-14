@@ -1,19 +1,13 @@
-import os
 import uuid
-import tempfile
 
 import streamlit as st
 
-from langchain_core.messages import HumanMessage
-from langgraph.types import Command
-
 from advanced_rag_agent.graph.rag_graph import graph
-from advanced_rag_agent.ingestion.ingest import ingest_document
 
 
-# Cache graph so Streamlit doesn't rebuild it on every rerun
 @st.cache_resource
 def load_graph():
+    # Avoid rebuilding the graph on every Streamlit rerun
     return graph
 
 
@@ -23,259 +17,232 @@ graph_instance = load_graph()
 st.set_page_config(
     page_title="Agentic RAG Assistant",
     page_icon="🤖",
-    layout="wide"
+    layout="wide",
 )
 
 st.title("🤖 Agentic RAG Assistant")
 
 
-# Stores chat history displayed in UI
+# Store UI conversation history
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 
-# Unique LangGraph conversation thread
+# Keep one LangGraph thread for the conversation
 if "thread_id" not in st.session_state:
     st.session_state.thread_id = str(uuid.uuid4())
 
 
-# Tracks active interrupt state
-if "pending_interrupt" not in st.session_state:
-    st.session_state.pending_interrupt = False
+def render_sources(sources):
+    """Render KB citations or web links."""
+    if not sources:
+        return
 
+    st.markdown("**Sources**")
+
+    for source in sources:
+        # Web source
+        if source.get("url"):
+            title = source.get("title", "Web source")
+            url = source["url"]
+            st.markdown(f"- [{title}]({url})")
+            continue
+
+        # Internal KB source
+        file_name = source.get("source", "Unknown")
+        section = source.get("section", "Unknown")
+        page_start = source.get("page_start")
+        page_end = source.get("page_end")
+
+        if page_start is None:
+            page_text = ""
+        elif page_end and page_end != page_start:
+            page_text = f", pages {page_start}-{page_end}"
+        else:
+            page_text = f", page {page_start}"
+
+        st.markdown(
+            f"- **{file_name}** — {section}{page_text}"
+        )
+
+
+def get_text(content):
+    """Extract text safely from streamed content."""
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        text = ""
+
+        for item in content:
+            if isinstance(item, str):
+                text += item
+            elif isinstance(item, dict):
+                text += item.get("text", "")
+
+        return text
+
+    return ""
+
+
+# ==========================================================
+# SIDEBAR
+# ==========================================================
 
 with st.sidebar:
-
     st.header("Agentic RAG")
 
-    # Start a completely new conversation
     if st.button("🗑️ New Chat"):
-
+        # New thread prevents previous graph state being reused
         st.session_state.messages = []
         st.session_state.thread_id = str(uuid.uuid4())
-        st.session_state.pending_interrupt = False
-
         st.rerun()
 
-    st.divider()
 
-    st.markdown("### Model Settings")
+# ==========================================================
+# CHAT HISTORY
+# ==========================================================
 
-    st.write("LLM: GPT OSS 120B")
-    st.write("Embeddings: BGE Small")
-    st.write("Reranker: MiniLM")
-
-    st.divider()
-
-    st.markdown("### Upload PDF")
-
-    uploaded_file = st.file_uploader(
-        "Choose a PDF",
-        type=["pdf"]
-    )
-
-    if uploaded_file:
-
-        with tempfile.NamedTemporaryFile(
-            delete=False,
-            suffix=".pdf"
-        ) as temp_file:
-
-            temp_file.write(
-                uploaded_file.getvalue()
-            )
-
-            temp_pdf_path = temp_file.name
-
-        with st.spinner("Indexing document..."):
-
-            ingest_document(temp_pdf_path)
-
-        st.success(
-            f"{uploaded_file.name} indexed successfully!"
-        )
-
-        os.remove(temp_pdf_path)
-
-    st.divider()
-
-    st.markdown("### Session ID")
-
-    st.code(
-        st.session_state.thread_id
-    )
-
-
-# Render conversation history
 for message in st.session_state.messages:
-
     with st.chat_message(message["role"]):
-
         st.markdown(message["content"])
 
-
-# ==================================
-# HANDLE RESUME AFTER INTERRUPT
-# ==================================
-if st.session_state.pending_interrupt:
-
-    clarification = st.chat_input(
-        "Provide additional information..."
-    )
-
-    if clarification:
-
-        # Show user reply immediately
-        with st.chat_message("user"):
-            st.markdown(clarification)
-
-        st.session_state.messages.append(
-            {
-                "role": "user",
-                "content": clarification
-            }
-        )
-
-        with st.chat_message("assistant"):
-
-            placeholder = st.empty()
-
-            placeholder.markdown("Thinking...")
-
-            result = graph_instance.invoke(
-                Command(
-                    resume=clarification
-                ),
-                config={
-                    "configurable": {
-                        "thread_id":
-                        st.session_state.thread_id
-                    }
-                }
+        if message["role"] == "assistant":
+            render_sources(
+                message.get("sources", [])
             )
 
-            answer = "No response generated."
 
-            if result.get("messages"):
+# ==========================================================
+# CHAT INPUT
+# ==========================================================
 
-                for msg in reversed(
-                    result["messages"]
-                ):
-
-                    if (
-                        hasattr(msg, "content")
-                        and msg.content
-                    ):
-                        answer = msg.content
-                        break
-
-            placeholder.markdown(answer)
-
-        st.session_state.messages.append(
-            {
-                "role": "assistant",
-                "content": answer
-            }
-        )
-
-        st.session_state.pending_interrupt = False
-
-        st.rerun()
+question = st.chat_input(
+    "Ask a question..."
+)
 
 
-# ==================================
-# NORMAL CHAT FLOW
-# ==================================
-else:
+if question:
+    # Show user message immediately
+    with st.chat_message("user"):
+        st.markdown(question)
 
-    question = st.chat_input(
-        "Ask a question..."
+    st.session_state.messages.append(
+        {
+            "role": "user",
+            "content": question,
+        }
     )
 
-    if question:
+    config = {
+        "configurable": {
+            "thread_id": st.session_state.thread_id
+        }
+    }
 
-        # Show user message immediately
-        with st.chat_message("user"):
-            st.markdown(question)
+    with st.chat_message("assistant"):
+        placeholder = st.empty()
 
-        st.session_state.messages.append(
-            {
-                "role": "user",
-                "content": question
-            }
-        )
+        streamed_answer = ""
+        final_answer = ""
+        sources = []
 
-        with st.chat_message("assistant"):
+        # Only stream user-facing generation nodes
+        answer_nodes = {
+            "generate_kb_answer",
+            "generate_general_answer",
+            "generate_web_answer",
+        }
 
-            placeholder = st.empty()
-
+        try:
             placeholder.markdown("Thinking...")
 
-            result = graph_instance.invoke(
-                {
-                    "messages": [
-                        HumanMessage(
-                            content=question
+            for mode, chunk in graph_instance.stream(
+                {"query": question},
+                config=config,
+                stream_mode=[
+                    "messages",
+                    "updates",
+                ],
+            ):
+
+                # Stream LLM tokens
+                if mode == "messages":
+                    message, metadata = chunk
+
+                    node = metadata.get(
+                        "langgraph_node"
+                    )
+
+                    if node not in answer_nodes:
+                        continue
+
+                    text = get_text(
+                        message.content
+                    )
+
+                    if text:
+                        streamed_answer += text
+
+                        placeholder.markdown(
+                            streamed_answer + "▌"
                         )
-                    ]
-                },
-                config={
-                    "configurable": {
-                        "thread_id":
-                        st.session_state.thread_id
-                    }
-                }
-            )
 
-            if "__interrupt__" in result:
+                # Capture final graph state updates
+                elif mode == "updates":
+                    for _, update in chunk.items():
 
-                interrupt_data = (
-                    result["__interrupt__"][0]
-                    .value
-                )
+                        if not isinstance(
+                            update,
+                            dict,
+                        ):
+                            continue
 
-                interrupt_question = (
-                    interrupt_data["question"]
-                )
+                        if update.get(
+                            "final_answer"
+                        ):
+                            final_answer = update[
+                                "final_answer"
+                            ]
 
-                placeholder.markdown(
-                    interrupt_question
-                )
+                        if (
+                            "sources" in update
+                            and update["sources"] is not None
+                        ):
+                            sources = update[
+                                "sources"
+                            ]
 
-                # Save interrupt question into history
-                st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": interrupt_question
-                    }
-                )
-
-                st.session_state.pending_interrupt = True
-
-                st.rerun()
-
-            answer = "No response generated."
-
-            if result.get("messages"):
-
-                for msg in reversed(
-                    result["messages"]
-                ):
-
-                    if (
-                        hasattr(msg, "content")
-                        and msg.content
-                    ):
-                        answer = msg.content
-                        break
+            # Guardrailed final answer takes priority
+            if final_answer:
+                answer = final_answer
+            elif streamed_answer:
+                answer = streamed_answer
+            else:
+                answer = "No response generated."
 
             placeholder.markdown(answer)
 
-        st.session_state.messages.append(
-            {
-                "role": "assistant",
-                "content": answer
-            }
-        )
+            render_sources(sources)
 
-        st.rerun()
+        except Exception as error:
+            answer = (
+                "Sorry, something went wrong while "
+                "processing your request."
+            )
+
+            sources = []
+
+            placeholder.markdown(answer)
+
+            # Keep technical error visible during development
+            st.error(str(error))
+
+    # Save final response in Streamlit history
+    st.session_state.messages.append(
+        {
+            "role": "assistant",
+            "content": answer,
+            "sources": sources,
+        }
+    )

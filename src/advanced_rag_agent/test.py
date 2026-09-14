@@ -1,32 +1,96 @@
-from advanced_rag_agent.config.settings import TOP_K, FINAL_K
 from advanced_rag_agent.retrieval.hybrid_retriever import hybrid_search
-from advanced_rag_agent.retrieval.reranker_encoderbased import rerank_documents
+from advanced_rag_agent.retrieval.reranker import rerank_documents
+from advanced_rag_agent.graph.evidence_grader import grade_evidence
+from advanced_rag_agent.graph.query_rewriter import rewrite_query
 
-queries = [
-    "What is the probation period?",
-    "How many earned leaves do employees get?",
-    "What are the working hours?",
-]
+QUERY = "Can you summarize our company's leave policy?"
 
-for query in queries:
-    print("\n" + "=" * 80)
-    print(f"QUERY: {query}")
-    print("=" * 80)
+print("\n===== ORIGINAL QUERY =====")
+print(QUERY)
 
-    # Retrieve broader candidate set using Vector + BM25 + RRF
-    candidates = hybrid_search(query, k=TOP_K)
+# First retrieval
+retrieved_docs = hybrid_search(
+    query=QUERY,
+    k=10,
+)
 
-    # Cross-encoder selects the most relevant final chunks
-    results = rerank_documents(
-        query=query,
-        documents=candidates,
-        top_k=FINAL_K,
-    )
+print("\n===== HYBRID RESULTS =====")
 
-    for rank, document in enumerate(results, start=1):
-        print(f"\nRANK: {rank}")
-        print(f"Source: {document.metadata.get('source')}")
-        print(f"Section: {document.metadata.get('section')}")
-        print(f"Page: {document.metadata.get('page_start')}")
-        print("-" * 80)
-        print(document.page_content)
+for index, doc in enumerate(
+    retrieved_docs,
+    start=1,
+):
+    print(f"\n--- Document {index} ---")
+    print(f"Source: {doc.metadata.get('source')}")
+    print(f"Section: {doc.metadata.get('section')}")
+    print(doc.page_content[:500])
+
+
+# Rerank and keep final top 6
+reranked_docs = rerank_documents(
+    query=QUERY,
+    documents=retrieved_docs,
+    top_k=6,
+)
+
+print("\n===== RERANKED TOP 6 =====")
+
+for index, doc in enumerate(
+    reranked_docs,
+    start=1,
+):
+    print(f"\n--- Document {index} ---")
+    print(f"Source: {doc.metadata.get('source')}")
+    print(f"Section: {doc.metadata.get('section')}")
+    print(doc.page_content[:500])
+
+
+# Grade first retrieval
+decision = grade_evidence(
+    query=QUERY,
+    documents=reranked_docs,
+)
+
+print("\n===== FIRST EVIDENCE DECISION =====")
+print(decision)
+
+
+# Rewrite query
+rewritten_query = rewrite_query(QUERY)
+
+print("\n===== REWRITTEN QUERY =====")
+print(rewritten_query)
+
+
+# Retrieve again using rewritten query
+retrieved_docs_2 = hybrid_search(
+    query=rewritten_query,
+    k=10,
+)
+
+reranked_docs_2 = rerank_documents(
+    query=rewritten_query,
+    documents=retrieved_docs_2,
+    top_k=6,
+)
+
+print("\n===== SECOND RERANKED TOP 6 =====")
+
+for index, doc in enumerate(
+    reranked_docs_2,
+    start=1,
+):
+    print(f"\n--- Document {index} ---")
+    print(f"Source: {doc.metadata.get('source')}")
+    print(f"Section: {doc.metadata.get('section')}")
+    print(doc.page_content[:500])
+
+
+# Grade second retrieval
+decision_2 = grade_evidence(
+    query=rewritten_query,
+    documents=reranked_docs_2,
+)
+
+print("\n===== SECOND EVIDENCE DECISION =====")
+print(decision_2)

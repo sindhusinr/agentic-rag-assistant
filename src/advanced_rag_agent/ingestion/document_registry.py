@@ -44,3 +44,13 @@ def update_document_registry(file_path: str, registry: dict):
     registry[file_name] = {
         "hash": calculate_file_hash(file_path),
     }
+def get_kb_version(registry: dict) -> str:
+    # Combine all document hashes into one stable KB version
+    combined_hashes = "".join(
+        registry[file_name]["hash"]
+        for file_name in sorted(registry)
+    )
+
+    return hashlib.sha256(
+        combined_hashes.encode()
+    ).hexdigest()
