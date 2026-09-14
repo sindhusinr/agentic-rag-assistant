@@ -4,6 +4,7 @@ from advanced_rag_agent.config.settings import RERANK_MODEL
 
 _reranker = None
 
+
 def get_reranker():
     global _reranker
 
@@ -15,6 +16,7 @@ def get_reranker():
         _reranker = CrossEncoder(RERANK_MODEL)
 
     return _reranker
+
 
 def rerank_documents(query, documents, top_k=5):
     if not documents:

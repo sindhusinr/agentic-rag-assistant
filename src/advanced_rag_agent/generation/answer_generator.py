@@ -51,6 +51,7 @@ must be answered using the internal knowledge base.
     ("human", "{query}"),
 ])
 
+
 WEB_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
@@ -126,7 +127,7 @@ def build_web_context(web_results: dict) -> str:
         url = result.get("url", "")
         content = result.get("content", "")
 
-        # Give the LLM source context without exposing raw Tavily output
+        # Give the LLM clean web-result context
         context_parts.append(
             f"Title: {title}\n"
             f"URL: {url}\n"
@@ -161,7 +162,9 @@ def generate_web_answer(
     return response.content
 
 
-def build_sources(documents: list[Document]) -> list[dict]:
+def build_sources(
+    documents: list[Document],
+) -> list[dict]:
     sources = []
     seen = set()
 
@@ -171,9 +174,12 @@ def build_sources(documents: list[Document]) -> list[dict]:
         source = metadata.get("source", "Unknown")
         section = metadata.get("section", "Unknown")
         page_start = metadata.get("page_start", 0)
-        page_end = metadata.get("page_end", page_start)
+        page_end = metadata.get(
+            "page_end",
+            page_start,
+        )
 
-        # Convert zero-based PDF pages to human-readable page numbers
+        # Convert zero-based PDF pages to human-readable pages
         page_start += 1
         page_end += 1
 
@@ -184,6 +190,7 @@ def build_sources(documents: list[Document]) -> list[dict]:
             page_end,
         )
 
+        # Avoid displaying duplicate sources
         if key in seen:
             continue
 
@@ -199,13 +206,18 @@ def build_sources(documents: list[Document]) -> list[dict]:
     return sources
 
 
-def build_web_sources(web_results: dict) -> list[dict]:
+def build_web_sources(
+    web_results: dict,
+) -> list[dict]:
     sources = []
     seen = set()
 
     for result in web_results.get("results", []):
         url = result.get("url", "")
-        title = result.get("title", "Unknown")
+        title = result.get(
+            "title",
+            "Unknown",
+        )
 
         if not url or url in seen:
             continue
@@ -229,6 +241,7 @@ def generate_rag_response(
         documents=documents,
     )
 
+    # Sources currently come from retrieved/reranked context
     sources = build_sources(documents)
 
     return {
@@ -246,7 +259,9 @@ def generate_web_response(
         web_results=web_results,
     )
 
-    sources = build_web_sources(web_results)
+    sources = build_web_sources(
+        web_results
+    )
 
     return {
         "answer": answer,
@@ -255,7 +270,7 @@ def generate_web_response(
 
 
 def generate_insufficient_response() -> dict:
-    # Do not guess when internal policy evidence is unavailable
+    # Do not guess when internal evidence is unavailable
     return {
         "answer": (
             "I couldn't find enough information in the available HR policy "
