@@ -5,13 +5,46 @@ config:
 ---
 graph TD;
 	__start__([<p>__start__</p>]):::first
-	agent(agent)
-	tools(tools)
+	prepare_query(prepare_query)
+	input_guardrail(input_guardrail)
+	route_question(route_question)
+	cache_lookup(cache_lookup)
+	retrieve_kb(retrieve_kb)
+	rerank_kb(rerank_kb)
+	grade_evidence(grade_evidence)
+	rewrite_query(rewrite_query)
+	generate_kb_answer(generate_kb_answer)
+	generate_general_answer(generate_general_answer)
+	web_search(web_search)
+	generate_web_answer(generate_web_answer)
+	insufficient_answer(insufficient_answer)
+	output_guardrail(output_guardrail)
+	save_cache(save_cache)
+	final_message(final_message)
 	__end__([<p>__end__</p>]):::last
-	__start__ --> agent;
-	agent -.-> __end__;
-	agent -.-> tools;
-	tools --> agent;
+	__start__ --> prepare_query;
+	cache_lookup -.-> generate_general_answer;
+	cache_lookup -.-> output_guardrail;
+	cache_lookup -.-> retrieve_kb;
+	cache_lookup -.-> web_search;
+	generate_general_answer --> output_guardrail;
+	generate_kb_answer --> output_guardrail;
+	generate_web_answer --> output_guardrail;
+	grade_evidence -.-> generate_kb_answer;
+	grade_evidence -.-> insufficient_answer;
+	grade_evidence -.-> rewrite_query;
+	input_guardrail -.-> output_guardrail;
+	input_guardrail -.-> route_question;
+	insufficient_answer --> output_guardrail;
+	output_guardrail --> save_cache;
+	prepare_query --> input_guardrail;
+	rerank_kb --> grade_evidence;
+	retrieve_kb --> rerank_kb;
+	rewrite_query --> retrieve_kb;
+	route_question --> cache_lookup;
+	save_cache --> final_message;
+	web_search --> generate_web_answer;
+	final_message --> __end__;
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0
 	classDef last fill:#bfb6fc
