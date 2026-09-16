@@ -39,14 +39,14 @@ EVALUATION_DATASET = [
         "question": "How much paid maternity leave is available?",
         "reference_answer": "Female employees are entitled to 26 weeks of paid maternity leave for up to two children, or 12 weeks if they already have two or more children.",
         "relevant_sections": [
-            {"source": "Leave policy.pdf", "section": "3. Parental Leave"}
+            {"source": "Leave policy.pdf", "section": "Maternity Leave (ML)"}
         ],
     },
     {
         "question": "What parental leave is available to employees who are not entitled to maternity leave?",
         "reference_answer": "Employees who are not entitled to maternity leave and have completed one year of service are eligible for 5 days of fully paid parental leave and 15 working days at 80% base pay.",
         "relevant_sections": [
-            {"source": "Leave policy.pdf", "section": "3. Parental Leave"}
+            {"source": "Leave policy.pdf", "section": "Other Parental Leave"}
         ],
     },
     {
