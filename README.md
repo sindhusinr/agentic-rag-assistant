@@ -1,5 +1,7 @@
 # Advanced_rag_agent
 Advanced RAG Agent using LangGraph
+to activate venv 
+.venv\Scripts\Activate.ps1
 
 uv run python src/app.py
 uv run python -m advanced_rag_agent.app.py
