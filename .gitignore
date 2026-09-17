@@ -222,6 +222,7 @@ chroma_db/
 
 # Embedded/generated data
 data/*.pkl
+data/document_registry.json
 data/index/
 data/cache/
 

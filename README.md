@@ -7,7 +7,7 @@ uv run python src/app.py
 uv run python -m advanced_rag_agent.app.py
 
 to index 
-uv run python -m advanced_rag_agent.index_documents
+uv run python -m advanced_rag_agent.run_ingestion
 
 # To Run streamlit
 uv run streamlit run src/advanced_rag_agent/app_streamlit.py
