@@ -86,7 +86,7 @@ Web results:
 def generate_answer(
     query: str,
     documents: list[Document],
-) -> str:
+):
     if not documents:
         return (
             "The available documents do not contain enough "
@@ -106,7 +106,7 @@ def generate_answer(
     return response.content
 
 
-def generate_general_answer(query: str) -> str:
+def generate_general_answer(query: str):
     llm = get_llm()
 
     chain = GENERAL_PROMPT | llm
@@ -140,7 +140,7 @@ def build_web_context(web_results: dict) -> str:
 def generate_web_answer(
     query: str,
     web_results: dict,
-) -> str:
+):
     results = web_results.get("results", [])
 
     if not results:
