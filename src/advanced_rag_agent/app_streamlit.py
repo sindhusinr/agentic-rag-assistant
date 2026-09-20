@@ -1,7 +1,6 @@
 import uuid
-
 import streamlit as st
-
+from langchain_core.messages import HumanMessage
 from advanced_rag_agent.graph.rag_graph import graph
 
 
@@ -158,7 +157,10 @@ if question:
             placeholder.markdown("Thinking...")
 
             for mode, chunk in graph_instance.stream(
-                {"query": question},
+                {
+                    "query": question,
+                    "messages": [HumanMessage(content=question)],
+                },
                 config=config,
                 stream_mode=[
                     "messages",

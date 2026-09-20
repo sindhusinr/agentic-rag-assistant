@@ -5,6 +5,7 @@ from advanced_rag_agent.graph.memory import memory
 from advanced_rag_agent.graph.nodes import (
     prepare_query_node,
     input_guardrail_node,
+    contextualize_query_node,
     cache_lookup_node,
     route_question_node,
     retrieve_kb_node,
@@ -23,11 +24,11 @@ from advanced_rag_agent.graph.nodes import (
 
 
 def route_after_guardrail(state: GraphState) -> str:
-    # Block unsafe input before routing
+    # Block unsafe input before conversational contextualization
     if not state.get("guardrail_allowed", False):
         return "output_guardrail"
 
-    return "route_question"
+    return "contextualize_query"
 
 
 def route_after_cache(state: GraphState) -> str:
@@ -62,6 +63,7 @@ builder = StateGraph(GraphState)
 # Register common nodes
 builder.add_node("prepare_query", prepare_query_node)
 builder.add_node("input_guardrail", input_guardrail_node)
+builder.add_node("contextualize_query", contextualize_query_node)
 builder.add_node("route_question", route_question_node)
 builder.add_node("cache_lookup", cache_lookup_node)
 
@@ -86,23 +88,47 @@ builder.add_node(
 )
 
 # Shared final-response nodes
-builder.add_node("insufficient_answer", insufficient_answer_node)
-builder.add_node("output_guardrail", output_guardrail_node)
-builder.add_node("save_cache", save_cache_node)
-builder.add_node("final_message", final_message_node)
+builder.add_node(
+    "insufficient_answer",
+    insufficient_answer_node,
+)
+builder.add_node(
+    "output_guardrail",
+    output_guardrail_node,
+)
+builder.add_node(
+    "save_cache",
+    save_cache_node,
+)
+builder.add_node(
+    "final_message",
+    final_message_node,
+)
 
 # Entry flow
-builder.add_edge(START, "prepare_query")
-builder.add_edge("prepare_query", "input_guardrail")
+builder.add_edge(
+    START,
+    "prepare_query",
+)
+builder.add_edge(
+    "prepare_query",
+    "input_guardrail",
+)
 
-# Guardrail decision
+# Unsafe input stops here; valid input moves to contextualization
 builder.add_conditional_edges(
     "input_guardrail",
     route_after_guardrail,
     {
-        "route_question": "route_question",
+        "contextualize_query": "contextualize_query",
         "output_guardrail": "output_guardrail",
     },
+)
+
+# Convert conversational follow-up into a standalone query
+builder.add_edge(
+    "contextualize_query",
+    "route_question",
 )
 
 # Route first so cache lookup knows which branch to search
@@ -124,8 +150,14 @@ builder.add_conditional_edges(
 )
 
 # Internal KB retrieval flow
-builder.add_edge("retrieve_kb", "rerank_kb")
-builder.add_edge("rerank_kb", "grade_evidence")
+builder.add_edge(
+    "retrieve_kb",
+    "rerank_kb",
+)
+builder.add_edge(
+    "rerank_kb",
+    "grade_evidence",
+)
 
 # Evidence decision
 builder.add_conditional_edges(
@@ -138,7 +170,7 @@ builder.add_conditional_edges(
     },
 )
 
-# Retry KB retrieval after rewriting once
+# Retry KB retrieval once after query rewriting
 builder.add_edge(
     "rewrite_query",
     "retrieve_kb",
@@ -182,6 +214,7 @@ builder.add_edge(
     END,
 )
 
+# Checkpointer preserves graph state for the same thread_id
 graph = builder.compile(
     checkpointer=memory
 )

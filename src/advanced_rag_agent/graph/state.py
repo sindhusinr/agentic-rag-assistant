@@ -11,6 +11,9 @@ class GraphState(TypedDict, total=False):
     # Original and sanitized user query
     query: str
     sanitized_query: str
+    
+    # Standalone query created using conversation history
+    contextualized_query: str
 
     # Guardrail result
     guardrail_allowed: bool
