@@ -75,67 +75,34 @@ builder.add_node("rewrite_query", rewrite_query_node)
 builder.add_node("generate_kb_answer", generate_kb_answer_node)
 
 # General branch
-builder.add_node(
-    "generate_general_answer",
-    generate_general_answer_node,
-)
+builder.add_node("generate_general_answer",generate_general_answer_node)
 
 # Web branch
 builder.add_node("web_search", web_search_node)
-builder.add_node(
-    "generate_web_answer",
-    generate_web_answer_node,
-)
+builder.add_node("generate_web_answer",generate_web_answer_node)
 
 # Shared final-response nodes
-builder.add_node(
-    "insufficient_answer",
-    insufficient_answer_node,
-)
-builder.add_node(
-    "output_guardrail",
-    output_guardrail_node,
-)
-builder.add_node(
-    "save_cache",
-    save_cache_node,
-)
-builder.add_node(
-    "final_message",
-    final_message_node,
-)
+builder.add_node("insufficient_answer",insufficient_answer_node)
+builder.add_node("output_guardrail",output_guardrail_node)
+builder.add_node("save_cache",save_cache_node)
+builder.add_node("final_message",final_message_node)
 
 # Entry flow
-builder.add_edge(
-    START,
-    "prepare_query",
-)
-builder.add_edge(
-    "prepare_query",
-    "input_guardrail",
-)
+builder.add_edge(START,"prepare_query",)
+builder.add_edge("prepare_query","input_guardrail")
 
 # Unsafe input stops here; valid input moves to contextualization
 builder.add_conditional_edges(
     "input_guardrail",
     route_after_guardrail,
-    {
-        "contextualize_query": "contextualize_query",
-        "output_guardrail": "output_guardrail",
-    },
+    {"contextualize_query": "contextualize_query","output_guardrail": "output_guardrail",}
 )
 
 # Convert conversational follow-up into a standalone query
-builder.add_edge(
-    "contextualize_query",
-    "route_question",
-)
+builder.add_edge("contextualize_query","route_question")
 
 # Route first so cache lookup knows which branch to search
-builder.add_edge(
-    "route_question",
-    "cache_lookup",
-)
+builder.add_edge("route_question","cache_lookup")
 
 # Cache decision
 builder.add_conditional_edges(
@@ -150,14 +117,8 @@ builder.add_conditional_edges(
 )
 
 # Internal KB retrieval flow
-builder.add_edge(
-    "retrieve_kb",
-    "rerank_kb",
-)
-builder.add_edge(
-    "rerank_kb",
-    "grade_evidence",
-)
+builder.add_edge("retrieve_kb","rerank_kb")
+builder.add_edge("rerank_kb","grade_evidence",)
 
 # Evidence decision
 builder.add_conditional_edges(
@@ -171,50 +132,21 @@ builder.add_conditional_edges(
 )
 
 # Retry KB retrieval once after query rewriting
-builder.add_edge(
-    "rewrite_query",
-    "retrieve_kb",
-)
+builder.add_edge("rewrite_query", "retrieve_kb")
 
 # Web flow
-builder.add_edge(
-    "web_search",
-    "generate_web_answer",
-)
+builder.add_edge("web_search", "generate_web_answer")
 
 # All generated answers go through output guardrail
-builder.add_edge(
-    "generate_kb_answer",
-    "output_guardrail",
-)
-builder.add_edge(
-    "generate_general_answer",
-    "output_guardrail",
-)
-builder.add_edge(
-    "generate_web_answer",
-    "output_guardrail",
-)
-builder.add_edge(
-    "insufficient_answer",
-    "output_guardrail",
-)
+builder.add_edge("generate_kb_answer", "output_guardrail")
+builder.add_edge("generate_general_answer", "output_guardrail")
+builder.add_edge("generate_web_answer", "output_guardrail")
+builder.add_edge("insufficient_answer", "output_guardrail")
 
 # Sanitize before cache and final output
-builder.add_edge(
-    "output_guardrail",
-    "save_cache",
-)
-builder.add_edge(
-    "save_cache",
-    "final_message",
-)
-builder.add_edge(
-    "final_message",
-    END,
-)
+builder.add_edge("output_guardrail", "save_cache")
+builder.add_edge("save_cache", "final_message")
+builder.add_edge("final_message", END)
 
 # Checkpointer preserves graph state for the same thread_id
-graph = builder.compile(
-    checkpointer=memory
-)
+graph = builder.compile(checkpointer=memory)
