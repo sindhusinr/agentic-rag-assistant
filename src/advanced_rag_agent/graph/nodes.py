@@ -1,18 +1,9 @@
 from langchain_core.messages import AIMessage
 
 from advanced_rag_agent.config.settings import TOP_K, FINAL_K, BROAD_K
-from advanced_rag_agent.guardrails.guardrail_manager import (
-    validate_input,
-    validate_output,
-)
-from advanced_rag_agent.cache.semantic_cache import (
-    get_cached_result,
-    save_to_cache,
-)
-from advanced_rag_agent.ingestion.document_registry import (
-    load_registry,
-    get_kb_version,
-)
+from advanced_rag_agent.guardrails.guardrail_manager import validate_input,validate_output
+from advanced_rag_agent.cache.semantic_cache import get_cached_result,save_to_cache
+from advanced_rag_agent.ingestion.document_registry import load_registry,get_kb_version
 from advanced_rag_agent.retrieval.hybrid_retriever import hybrid_search
 from advanced_rag_agent.retrieval.reranker import rerank_documents
 from advanced_rag_agent.retrieval.web_search import search_web
@@ -25,7 +16,7 @@ from advanced_rag_agent.generation.answer_generator import (
     generate_rag_response,
     generate_general_answer,
     generate_web_response,
-    generate_insufficient_response,
+    generate_insufficient_response
 )
 
 
